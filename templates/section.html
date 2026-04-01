@@ -5,7 +5,12 @@
 {% block content %}
 <div class="posts" style="padding-top: 40px;">
   <h2>All posts</h2>
-  {% for page in section.pages %}
+  {% if paginator %}
+    {% set pages = paginator.pages %}
+  {% else %}
+    {% set pages = section.pages %}
+  {% endif %}
+  {% for page in pages %}
   <a href="{{ page.permalink }}" class="post-item">
     <div class="post-title">{{ page.title }}</div>
     <div class="post-meta">{{ page.date | date(format="%B %d, %Y") }}{% if page.reading_time %} · {{ page.reading_time }} min read{% endif %}</div>
