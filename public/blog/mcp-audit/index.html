@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCP Audit - building and publishing a security scanner in Rust - &#x2F;dev&#x2F;notes&#x2F;www</title>
+  <meta name="description" content="&lt;p&gt;I&#x27;ve been working with MCP (Model Context Protocol) servers a lot recently - building tools, integrating them with Claude, configuring them for different projects. At some point I realized how easy it is to misconfigure these things. One wrong path and an AI agent has access to your entire filesystem. One hardcoded API key in your config and it&#x27;s exposed to anyone who sees your dotfiles.&lt;&#x2F;p&gt;
+&lt;p&gt;So I built &lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;Norbi0801&#x2F;mcp-audit&quot;&gt;mcp-audit&lt;&#x2F;a&gt; - a CLI tool that scans MCP configurations for security issues.&lt;&#x2F;p&gt;
+">
+  <link rel="stylesheet" href="https://norbi0801.github.io/css/style.css">
+  <link rel="alternate" type="application/rss+xml" title="RSS" href="https://norbi0801.github.io/rss.xml">
+</head>
+<body>
+
+  <nav>
+    <div class="container">
+      <a href="https:&#x2F;&#x2F;norbi0801.github.io" class="nav-logo" style="font-family: monospace;">
+        &#x2F;dev&#x2F;notes&#x2F;www
+      </a>
+      <div class="nav-links">
+        <a href="https:&#x2F;&#x2F;norbi0801.github.io">Home</a>
+        <a href="https://norbi0801.github.io/blog">Blog</a>
+        <a href="https:&#x2F;&#x2F;github.com&#x2F;Norbi0801" target="_blank">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+    
+<article class="post-content">
+  <h1>MCP Audit - building and publishing a security scanner in Rust</h1>
+  <div class="meta">
+    April 01, 2026 · 3 min read
+    
+    <div class="tags" style="margin-top: 8px;">
+      <span class="tag">rust</span><span class="tag">mcp</span><span class="tag">security</span><span class="tag">open-source</span>
+    </div>
+    
+  </div>
+  <p>I've been working with MCP (Model Context Protocol) servers a lot recently - building tools, integrating them with Claude, configuring them for different projects. At some point I realized how easy it is to misconfigure these things. One wrong path and an AI agent has access to your entire filesystem. One hardcoded API key in your config and it's exposed to anyone who sees your dotfiles.</p>
+<p>So I built <a href="https://github.com/Norbi0801/mcp-audit">mcp-audit</a> - a CLI tool that scans MCP configurations for security issues.</p>
+<span id="continue-reading"></span><h2 id="what-it-does">What it does</h2>
+<p>You run it against your <code>claude_desktop_config.json</code> or <code>.mcp.json</code>:</p>
+<pre data-lang="bash" style="background-color:#2b303b;color:#c0c5ce;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#bf616a;">cargo</span><span> install mcp-audit
+</span><span style="color:#bf616a;">mcp-audit</span><span> scan
+</span></code></pre>
+<p>It checks for 19 different vulnerability patterns - hardcoded API keys (<code>sk-</code>, <code>ghp_</code>, <code>AKIA</code>), shell injection vectors, excessive filesystem permissions, prompt injection in tool descriptions, unpinned dependencies, missing auth, and more.</p>
+<p>I scanned the 50 most popular public MCP servers on GitHub. 30% had high or critical issues. 22% had hardcoded credentials in their example configs. Pretty much every single one was missing timeout and response size limits.</p>
+<h2 id="stuff-that-went-wrong">Stuff that went wrong</h2>
+<p><strong>Naming.</strong> I originally called it <code>mcp-scanner</code>. Built the whole thing, went to publish on crates.io, and the name was already taken. 49 downloads, barely maintained, but the name was gone. Had to rename everything to <code>mcp-audit</code>. Check crates.io <em>before</em> you start building.</p>
+<p><strong>OWASP licensing.</strong> I wanted to base the rules on the OWASP MCP Top 10. Turns out it's licensed CC BY-NC-SA 4.0 - the NonCommercial part means you can't copy their text into anything commercial. The security concepts themselves aren't copyrightable though, so I wrote my own descriptions. You can say "checks for risks identified in the OWASP MCP Top 10" but you can't say "OWASP certified" or copy their rule text.</p>
+<p><strong>JSON output bug.</strong> When using <code>--format json</code>, the tool was printing valid JSON and then appending a plain text summary after it. Broke every script that tried to parse the output. Simple fix - only show the summary for table format - but I only caught it when I tried piping the output to <code>jq</code>.</p>
+<p><strong>CI/CD.</strong> The GitHub Action (<code>action.yml</code>) needs to handle a lot of edge cases. What if there's no pre-built binary for this platform? Fall back to <code>cargo install</code>. What if there are no config files to scan? Exit cleanly. What if SARIF upload requires permissions the workflow doesn't have? Skip it. Each edge case was a separate debugging session.</p>
+<h2 id="how-to-publish-on-crates-io">How to publish on crates.io</h2>
+<p>If you haven't done it before, it's simpler than you'd think:</p>
+<p>Your <code>Cargo.toml</code> needs these fields:</p>
+<pre data-lang="toml" style="background-color:#2b303b;color:#c0c5ce;" class="language-toml "><code class="language-toml" data-lang="toml"><span>[package]
+</span><span style="color:#bf616a;">name </span><span>= &quot;</span><span style="color:#a3be8c;">mcp-audit</span><span>&quot;
+</span><span style="color:#bf616a;">version </span><span>= &quot;</span><span style="color:#a3be8c;">0.1.0</span><span>&quot;
+</span><span style="color:#bf616a;">license </span><span>= &quot;</span><span style="color:#a3be8c;">AGPL-3.0-or-later</span><span>&quot;
+</span><span style="color:#bf616a;">description </span><span>= &quot;</span><span style="color:#a3be8c;">Security scanner for MCP server configurations</span><span>&quot;
+</span><span style="color:#bf616a;">repository </span><span>= &quot;</span><span style="color:#a3be8c;">https://github.com/Norbi0801/mcp-audit</span><span>&quot;
+</span><span style="color:#bf616a;">keywords </span><span>= [&quot;</span><span style="color:#a3be8c;">mcp</span><span>&quot;, &quot;</span><span style="color:#a3be8c;">security</span><span>&quot;, &quot;</span><span style="color:#a3be8c;">scanner</span><span>&quot;, &quot;</span><span style="color:#a3be8c;">audit</span><span>&quot;]
+</span><span style="color:#bf616a;">categories </span><span>= [&quot;</span><span style="color:#a3be8c;">command-line-utilities</span><span>&quot;, &quot;</span><span style="color:#a3be8c;">development-tools</span><span>&quot;]
+</span></code></pre>
+<p>Then:</p>
+<pre data-lang="bash" style="background-color:#2b303b;color:#c0c5ce;" class="language-bash "><code class="language-bash" data-lang="bash"><span style="color:#65737e;"># Get your token from crates.io/settings/tokens
+</span><span style="color:#bf616a;">cargo</span><span> login
+</span><span>
+</span><span style="color:#65737e;"># Test first
+</span><span style="color:#bf616a;">cargo</span><span> publish</span><span style="color:#bf616a;"> --dry-run
+</span><span>
+</span><span style="color:#65737e;"># Ship it
+</span><span style="color:#bf616a;">cargo</span><span> publish
+</span></code></pre>
+<p>After that, <code>cargo install mcp-audit</code> works for anyone. The README renders automatically on crates.io so make sure it looks good.</p>
+<p>One thing to know - you can't unpublish a version. You can yank it (which hides it from new installs) but it stays in the registry forever. So do the dry-run first.</p>
+<h2 id="what-s-next">What's next</h2>
+<p>v0.1 does static analysis of config files. Planning to add runtime scanning (actually connecting to servers and probing them), custom rule definitions, and a VS Code extension.</p>
+<p>The project is on <a href="https://github.com/Norbi0801/mcp-audit">GitHub</a> and <a href="https://crates.io/crates/mcp-audit">crates.io</a>. Try it on your configs.</p>
+
+</article>
+
+  </main>
+
+  <footer>
+    <div class="container">
+      &#x2F;dev&#x2F;notes&#x2F;www
+    </div>
+  </footer>
+
+</body>
+</html>

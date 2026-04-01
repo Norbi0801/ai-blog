@@ -1,0 +1,17 @@
+base_url = "https://norbi0801.github.io"
+title = "/dev/notes/www"
+description = "Full-time developer"
+default_language = "en"
+compile_sass = true
+generate_feeds = true
+feed_filenames = ["rss.xml"]
+build_search_index = false
+taxonomies = [{name = "tags"}]
+
+[markdown]
+highlight_code = true
+highlight_theme = "base16-ocean-dark"
+
+[extra]
+author = "Full-time developer"
+github = "https://github.com/Norbi0801"

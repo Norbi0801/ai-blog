@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% set blog = get_section(path="blog/_index.md") %}
+{% if blog.pages | length > 0 %}
+<div class="posts">
+  <h2>Latest posts</h2>
+  {% for page in blog.pages | slice(end=5) %}
+  <a href="{{ page.permalink }}" class="post-item">
+    <div class="post-title">{{ page.title }}</div>
+    <div class="post-meta">{{ page.date | date(format="%B %d, %Y") }}{% if page.reading_time %} · {{ page.reading_time }} min read{% endif %}</div>
+    {% if page.description %}
+    <div class="post-summary">{{ page.description }}</div>
+    {% endif %}
+    {% if page.taxonomies.tags %}
+    <div class="tags">
+      {% for tag in page.taxonomies.tags %}<span class="tag">{{ tag }}</span>{% endfor %}
+    </div>
+    {% endif %}
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

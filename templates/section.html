@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Blog - {{ config.title }}{% endblock %}
+
+{% block content %}
+<div class="posts" style="padding-top: 40px;">
+  <h2>All posts</h2>
+  {% for page in section.pages %}
+  <a href="{{ page.permalink }}" class="post-item">
+    <div class="post-title">{{ page.title }}</div>
+    <div class="post-meta">{{ page.date | date(format="%B %d, %Y") }}{% if page.reading_time %} · {{ page.reading_time }} min read{% endif %}</div>
+    {% if page.description %}
+    <div class="post-summary">{{ page.description }}</div>
+    {% endif %}
+    {% if page.taxonomies.tags %}
+    <div class="tags">
+      {% for tag in page.taxonomies.tags %}<span class="tag">{{ tag }}</span>{% endfor %}
+    </div>
+    {% endif %}
+  </a>
+  {% endfor %}
+</div>
+{% endblock %}
