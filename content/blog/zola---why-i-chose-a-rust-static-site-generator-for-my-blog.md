@@ -7,6 +7,7 @@ description = "A practical comparison of static site generators and a walkthroug
 tags = ["rust", "zola", "static-site-generator", "devops"]
 +++
 
+{% raw %}
 I wanted a blog. Not a web app, not a CMS, not a React project with 400MB of node_modules. Just markdown files that turn into HTML pages fast enough that I never have to think about the build step.
 
 That narrowed things down to static site generators. And after spending a weekend evaluating the big names - Hugo, Jekyll, Next.js, Astro, and Zola - I went with Zola. Here's why, and how to set it up from scratch.
@@ -511,3 +512,4 @@ Then Zola is worth 30 minutes of your time to evaluate. Run `zola init`, write a
 The blog you're reading right now is built with Zola. The entire source - config, templates, sass, content - fits in a repository smaller than a typical `node_modules` directory. And when I push a new markdown file, it's live in under a minute.
 
 Sometimes the best tool is the one that gets out of your way.
+{% endraw %}
