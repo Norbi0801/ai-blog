@@ -5,13 +5,44 @@
 {% block content %}
 <div class="posts" style="padding-top: 40px;">
   <h2>All posts</h2>
-  {% if paginator %}
-    {% set pages = paginator.pages %}
-  {% else %}
-    {% set pages = section.pages %}
-  {% endif %}
-  {% for page in pages %}
-  <a href="{{ page.permalink }}" class="post-item">
+
+  {# Collect all unique tags across pages #}
+  {% set_global all_tags = [] %}
+  {% for page in section.pages %}
+    {% if page.taxonomies.tags %}
+      {% for tag in page.taxonomies.tags %}
+        {% if tag not in all_tags %}
+          {% set_global all_tags = all_tags | concat(with=tag) %}
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+  {% endfor %}
+  {% set sorted_tags = all_tags | sort %}
+
+  <div class="filter-bar">
+    <div class="search-wrap">
+      <input id="search-input" type="search" placeholder="Search posts by title, description or tag..." autocomplete="off" />
+      <span id="search-count" class="search-count">{{ section.pages | length }} posts</span>
+    </div>
+    <div class="tag-filters" id="tag-filters">
+      {% for tag in sorted_tags %}
+      <button type="button" class="tag-chip" data-tag="{{ tag }}">{{ tag }}</button>
+      {% endfor %}
+      <button type="button" class="tag-chip tag-clear" id="tag-clear" hidden>clear filters</button>
+    </div>
+  </div>
+
+  <div id="posts-list">
+  {% for page in section.pages %}
+    {% set tag_str = "" %}
+    {% if page.taxonomies.tags %}
+      {% set tag_str = page.taxonomies.tags | join(sep=" ") %}
+    {% endif %}
+  <a href="{{ page.permalink }}"
+     class="post-item"
+     data-title="{{ page.title | lower }}"
+     data-description="{{ page.description | default(value='') | lower }}"
+     data-tags="{{ tag_str | lower }}">
     <div class="post-title">{{ page.title }}</div>
     <div class="post-meta">{{ page.date | date(format="%B %d, %Y") }}{% if page.reading_time %} · {{ page.reading_time }} min read{% endif %}</div>
     {% if page.description %}
@@ -24,5 +55,74 @@
     {% endif %}
   </a>
   {% endfor %}
+  </div>
+
+  <div id="no-results" class="no-results" hidden>No posts match your filters.</div>
 </div>
+
+<script>
+(function () {
+  var input = document.getElementById('search-input');
+  var chips = document.querySelectorAll('.tag-chip[data-tag]');
+  var clearBtn = document.getElementById('tag-clear');
+  var posts = document.querySelectorAll('#posts-list .post-item');
+  var noResults = document.getElementById('no-results');
+  var counter = document.getElementById('search-count');
+  var totalPosts = posts.length;
+
+  var activeTags = new Set();
+
+  function apply() {
+    var q = (input.value || '').trim().toLowerCase();
+    var tokens = q.split(/\s+/).filter(Boolean);
+    var visibleCount = 0;
+    posts.forEach(function (el) {
+      var title = el.dataset.title || '';
+      var desc = el.dataset.description || '';
+      var tags = (el.dataset.tags || '').split(/\s+/).filter(Boolean);
+      var hay = title + ' ' + desc + ' ' + tags.join(' ');
+
+      var matchesQuery = tokens.every(function (t) { return hay.indexOf(t) !== -1; });
+      var matchesTags = true;
+      if (activeTags.size > 0) {
+        matchesTags = Array.from(activeTags).every(function (t) { return tags.indexOf(t) !== -1; });
+      }
+      var show = matchesQuery && matchesTags;
+      el.style.display = show ? '' : 'none';
+      if (show) visibleCount++;
+    });
+
+    noResults.hidden = visibleCount > 0;
+    counter.textContent = visibleCount === totalPosts
+      ? totalPosts + ' posts'
+      : visibleCount + ' / ' + totalPosts + ' posts';
+    clearBtn.hidden = activeTags.size === 0 && q.length === 0;
+  }
+
+  input.addEventListener('input', apply);
+
+  chips.forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      var t = chip.dataset.tag;
+      if (activeTags.has(t)) {
+        activeTags.delete(t);
+        chip.classList.remove('active');
+      } else {
+        activeTags.add(t);
+        chip.classList.add('active');
+      }
+      apply();
+    });
+  });
+
+  clearBtn.addEventListener('click', function () {
+    activeTags.clear();
+    chips.forEach(function (c) { c.classList.remove('active'); });
+    input.value = '';
+    apply();
+  });
+
+  apply();
+})();
+</script>
 {% endblock %}
